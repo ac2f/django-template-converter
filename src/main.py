@@ -1,7 +1,7 @@
 import os
 import sys
 
-TARGET:str      = "index.html";
+TARGET:str      = "example-template/index.html";
 TARGET_OUT:str  = "index-copy.html";
 
 
@@ -22,37 +22,43 @@ class AutomakeTemplateStatic:
     def main(self):
         content = self.readFile();
         content = ("{% load static %}\n" if not content.startswith("{% load static %}") else "") + content;
+        contentReplaced = content.split("\n");
         replaceStart:int = -1;
         replaceEnd:int = -1;
-        for i in range(len(content)):
-            tagLength = i+5 if any(x in content[i:i+5] for x in ["href =", "href="]) else i + 4 if any(x in content[i:i+4] for x in ["src =", "src="]) else -1;
-            if (tagLength > -1):
+        print("\n" + ("-" * len(self.file)) + ("\n" * 2) + (self.file.upper()) + ("\n" * 2) + ("-" * len(self.file)))
+        for line, i3 in zip(contentReplaced, range(len(contentReplaced))):
+            for column, i in zip(line, range(len(line))):
+                tagLength = i+5 if any(x in line[i:i+5] for x in ["href =", "href="]) else i + 4 if any(x in line[i:i+4] for x in ["src =", "src="]) else -1;
+                if (tagLength < 0):
+                    continue;
+                print(str(i3) + (" " * (len(str(len(contentReplaced))) - len(str(i3))+2 ))+"|", line[i:(i+5 if line[i+5] == "\"" else i+4)], end="")
                 i2:int = tagLength;
                 quoteStart:int = -1;
                 quoteEnd:int = -1;
                 while quoteStart < 0:
-                    if (content[i2] == "\""):
+                    if (line[i2] == "\""):
                         quoteStart = i2;
                         replaceStart = i2;
                         continue;
-                    if (content[i2] in [">", "/>"]):
+                    if (line[i2] in [">", "/>"]):
                         raise SyntaxError(i2);
                     if (i2 == len(content) -1): raise ValueError(i2); 
                     i2+=1;
                 i2+=1;
                 while quoteEnd < 0:
-                    if (content[i2] == "\""):
+                    if (line[i2] == "\""):
                         quoteEnd = i2
                         replaceEnd = i2;
                         continue;
-                    if (content[i2] in ["<",]):
+                    if (line[i2] in ["<",]):
                         raise SyntaxError(i2);
                     if (i2 == len(content) -1): raise ValueError(i2); 
                     i2+=1;
                 replaceStart += 1;
-                if (replaceStart != replaceEnd and (not any(content[replaceStart:replaceEnd].startswith(x) for x in ["#", "https://", "http://", "{"])) and (not any(content[replaceStart:replaceEnd].endswith(x) for x in [".html", "#", ";", "}"])) ):
-                    content = content[:replaceStart] + "{"+f"% static '{content[replaceStart:replaceEnd]}' %"+"}" + content[replaceEnd:];
-        self.writeFile(content);
+                print(f"\"{line[replaceStart:replaceEnd]}\"");
+                if (replaceStart != replaceEnd and (not any(line[replaceStart:replaceEnd].startswith(x) for x in ["#", "https://", "http://", "{"])) and (not any(line[replaceStart:replaceEnd].endswith(x) for x in [".html", "#", ";", "}"])) ):
+                    contentReplaced[i3] = line[:replaceStart] + "{"+f"% static '{line[replaceStart:replaceEnd]}' %"+"}" + line[replaceEnd:];
+        self.writeFile("".join(line + "\n" for line in contentReplaced)[:-1])                
 if __name__ == "__main__":
     if (len(sys.argv)>1):
         for file in os.listdir(sys.argv[1]):
